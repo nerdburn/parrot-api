@@ -20,10 +20,10 @@ urlpatterns = [
     url(r'^', include('apps.socialmedia.urls')),
     url(r'^', include('apps.user.urls')),
 
-    # ___CHANGEME___
     # Routes for example apps
     url(r'^', include('apps.proxyexample.urls')),
     url(r'^', include('apps.workerexample.urls')),
+    url(r'^', include('apps.podcast.urls')),    
 
     # Browsable API
     url(r'^api/$', api_root, name='index'),

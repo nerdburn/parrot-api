@@ -54,10 +54,8 @@ INSTALLED_APPS = [
     'apps.socialmedia',
     'apps.support',
     'apps.user',
-
-    # ___CHANGEME___
-    # Example apps
-    'apps.workerexample',
+    'apps.podcast',
+    'apps.moment',
 ]
 
 MIDDLEWARE = [
