@@ -8,5 +8,6 @@ class FetchView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         from apps.podcast import tasks
-        tasks.fetch_itunes_podcast('american life')
+        #tasks.fetch_itunes_podcast('american life')
+        tasks.fetch_rss_podcast('http://feed.thisamericanlife.org/talpodcast')
         return HttpResponse('Done')
