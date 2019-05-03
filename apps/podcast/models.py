@@ -56,10 +56,10 @@ class Podcast(models.Model):
 
 class Episode(models.Model): 
     podcast = models.ForeignKey('Podcast', null=False, blank=False, on_delete=models.CASCADE)
-    title = models.CharField(max_length=100)
+    title = models.CharField(max_length=255)
     slug = models.SlugField(unique=True)
     content = models.TextField()
-    content_snippet = models.CharField(max_length=200)
+    content_snippet = models.TextField()
     published_date = models.DateTimeField()
     link = models.URLField()
     audio_url = models.URLField()

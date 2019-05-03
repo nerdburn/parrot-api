@@ -2,9 +2,10 @@ import requests
 import pprint
 import feedparser
 from datetime import datetime
+import time
 from dateutil.parser import parse
 
-from .models import Podcast, Category
+from .models import Podcast, Category, Episode
 
 
 def fetch_itunes_podcast_by_title(query):
@@ -39,12 +40,25 @@ def fetch_rss_podcast_by_feed_url(feedUrl):
     print('Fetching RSS feed: ', feedUrl)
     response = feedparser.parse(feedUrl)
     if response:
-        if (len(response.entries) > 0):
-            print('Entries found:', len(response.entries))
+        print('Found podcast: ', response.feed['title'])
         return response
     else: 
         print('An error has occurred.')
         return False
+
+
+def find_and_save_podcast(title):
+    
+    # Find podcast on iTunes
+    iTunesPodcast = fetch_itunes_podcast_by_title(title)
+    if not iTunesPodcast:
+        return False
+    else:
+        print('------------------')
+        pprint.pprint(iTunesPodcast)
+        print('------------------')
+
+    return save_podcast(iTunesPodcast)
 
 
 def save_podcast(iTunesPodcast):
@@ -62,7 +76,6 @@ def save_podcast(iTunesPodcast):
         return False
 
     # save the podcast genre from iTunes and associate it with podcast
-    '''
     try:
         c = Category.objects.update_or_create(name=iTunesPodcast['primaryGenreName'])
         p = Podcast(
@@ -76,96 +89,81 @@ def save_podcast(iTunesPodcast):
         p.save()
     except Exception as e: 
         print('Failed to save: ', e)
-    '''
-
+    
+    # save the episodes
     try: 
-        item = rss.entries[1]
-        save_episode(item)
+        episodeList = rss.get('items', False) or rss.get('entries', False)
+        if episodeList:
+            print('Found episodes: ', len(episodeList))
+            item = episodeList[1]
+            save_episode(item, p)
+        else: 
+            print('No episode list found.')
     except Exception as error:
         print('error saving episode: ', error)
 
-    '''
-    # save podcast episodes (but only if they don't exist)
-    for item in rss.entries:
-        try:
-            e = Episode.objects.update_or_create(
-                podcast = p
-                title = models.CharField(max_length=100)
-                slug = models.SlugField(unique=True)
-                content = models.TextField()
-                content_snippet = models.CharField(max_length=200)
-                published_date = models.DateTimeField()
-                link = models.URLField()
-                audio_url = models.URLField()
-                duration_seconds = models.DurationField()
-            )
-            e.save()
-        except Exception as e:
-            print('e: ', e)
-    '''
-        
 
-def find_and_save_podcast(title):
-    
-    # Find podcast on iTunes
-    iTunesPodcast = fetch_itunes_podcast_by_title(title)
-    if not iTunesPodcast:
-        return False
-    else:
-        print('------------------')
-        pprint.pprint(iTunesPodcast)
-        print('------------------')
-
-    return save_podcast(iTunesPodcast)
+def extract_audio_link(episode):
+    links = episode.get('links', False) or episode.get('media_content', False)
+    print('links object:', links)
+    url = None
+    if links:
+        for link in links:
+            if 'type' in link.keys():
+                if link['type'].startswith('audio'):
+                    url = link['href']
+    return url
 
 
-def save_episode(episode):
+def extract_episode_link(episode):
+    link = episode.get('link', False)
+    links = episode.get('links', False)
+    content = episode.get('content', False)
+    url = None
+    if link:
+        url = link
+    elif links:
+        for link in links:
+            if 'type' in link.keys():
+                if link['type'].startswith('text'):
+                    url = link['href']
+    if not url:
+        url = content[0]['base']
+    return url
+
+
+def extract_duration_in_seconds(episode):
+    # 'itunes_duration': '00:36:18'
+    # 'itunes_duration': '841'
+    itunes_duration = episode.get('itunes_duration', '')
+    duration = ''
+    if itunes_duration:
+        duration = itunes_duration
+    x = time.strptime(duration.split(',')[0],'%H:%M:%S')
+    return datetime.timedelta(hours=x.tm_hour,minutes=x.tm_min,seconds=x.tm_sec).total_seconds()
+
+
+def save_episode(episode, podcast):
+    # handy - https://github.com/janw/podcast-archiver/blob/master/podcast_archiver.py
     print('-----------')
     print('attempting to save episode: ', episode['title'])
     pprint.pprint(episode)
+    print('link:', extract_episode_link(episode))
+    print('audio: ', extract_audio_link(episode))
+    print('duration: ', extract_duration_in_seconds(episode))
     print('-----------')
-    print('link?', episode.get('link', episode['content'][0]['base']))
-    content = episode.get('content', [{}])[0]
-    print('content: ', content)
-    get_date_obj = parse(episode.get('published', None))
-    print('date:', get_date_obj)
-    media = episode.get('media_content', [])
-    print('media content: ', media)
 
-    '''
-    e = Episode.objects.update_or_create(
-        podcast = p,
-        title = episode.get('title', None),
-        content = episode.get('itunes:subtitle', None),
-        content_snippet = episode.get('itunes:summary', None)
-        published_date = parse(episode.get('published', None))
-        link = episode.get('link', episode['content'][0]['base'])
-        audio_url = media[0]['url']
-        duration_seconds = episode.get('itunes_duration', 0)
-    )
-    e.save()
-    '''
-
-    '''
-    def to_seconds(data):
-        a = data.split(':')
-        seconds = 0
-        multiplier = 1
-
-        while(len(a) > 0):
-            time = a.pop()
-            seconds += (time * multiplier)
-            multiplier *= 60
-    return seconds
-
-    def toString(totalsecs):
-        sec_num = parseInt(totalsecs, 10)
-        hours   = Math.floor(sec_num / 3600)
-        minutes = Math.floor((sec_num - (hours * 3600)) / 60)
-        seconds = sec_num - (hours * 3600) - (minutes * 60)
-        if (hours   < 10) {hours   = "0"+hours; }
-        if (minutes < 10) {minutes = "0"+minutes;}
-        if (seconds < 10) {seconds = "0"+seconds;}
-        var time = hours+':'+minutes+':'+seconds
-        return time
-    '''
+    try: 
+        e = Episode.objects.update_or_create(
+            podcast = podcast,
+            title = episode.get('title', False) or episode.get('ttl', None),
+            content = episode.get('itunes_summary', False) or episode.get('summary', None),
+            content_snippet = episode.get('itunes_summary', False) or episode.get('summary', None),
+            published_date = parse(episode.get('published', None)),
+            link = extract_episode_link(episode),
+            audio_url = extract_audio_link(episode),
+            duration_seconds = extract_duration_in_seconds(episode),
+        )
+        e.save()
+    except Exception as e:
+        print('error saving episode: ', e)
