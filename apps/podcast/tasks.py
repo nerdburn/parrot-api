@@ -1,16 +1,33 @@
 import requests
 import pprint
 import feedparser
-from datetime import datetime
 import time
-from dateutil.parser import parse
+import datetime
+import json
 
+from apps.podcast.fixtures import titles
+from dateutil.parser import parse
 from .models import Podcast, Category, Episode
+
+def fetch_top_100_podcasts():
+    if titles:
+        print(titles)
+        for title in titles:
+            try:
+                print(title)
+                #find_and_save_podcast(title.title)
+            except Exception as e:
+                print('------------------------------------------')
+                print('Find and save podcast failed: ', e)
+                print('------------------------------------------')
+    return False
 
 
 def fetch_itunes_podcast_by_title(query):
     if query:
+        print('------------------------------------------------------')
         print('Fetching itunes podcast by title: ', query)
+        print('------------------------------------------------------')
     else:
         print('Missing title.')
         return False
@@ -40,7 +57,9 @@ def fetch_rss_podcast_by_feed_url(feedUrl):
     print('Fetching RSS feed: ', feedUrl)
     response = feedparser.parse(feedUrl)
     if response:
+        print('------------------------------------------------------')
         print('Found podcast: ', response.feed['title'])
+        print('------------------------------------------------------')
         return response
     else: 
         print('An error has occurred.')
@@ -78,7 +97,7 @@ def save_podcast(iTunesPodcast):
     # save the podcast genre from iTunes and associate it with podcast
     try:
         c = Category.objects.update_or_create(name=iTunesPodcast['primaryGenreName'])
-        p = Podcast(
+        p, created = Podcast.objects.update_or_create(
             artwork_url = iTunesPodcast['artworkUrl600'],
             feed_url = iTunesPodcast['feedUrl'],
             link = rssPodcast['link'],
@@ -91,21 +110,22 @@ def save_podcast(iTunesPodcast):
         print('Failed to save: ', e)
     
     # save the episodes
-    try: 
-        episodeList = rss.get('items', False) or rss.get('entries', False)
-        if episodeList:
-            print('Found episodes: ', len(episodeList))
-            item = episodeList[1]
-            save_episode(item, p)
-        else: 
-            print('No episode list found.')
-    except Exception as error:
-        print('error saving episode: ', error)
+    episodeList = rss.get('items', False) or rss.get('entries', False)
+    if episodeList:
+        print('Found episodes: ', len(episodeList))
+        for episode in episodeList:
+            try: 
+                save_episode(episode, p)
+            except Exception as error:
+                print('error saving episode: ', str(error))
+    else: 
+        print('No episode list found.')
+
+    return p
 
 
 def extract_audio_link(episode):
     links = episode.get('links', False) or episode.get('media_content', False)
-    print('links object:', links)
     url = None
     if links:
         for link in links:
@@ -138,23 +158,22 @@ def extract_duration_in_seconds(episode):
     itunes_duration = episode.get('itunes_duration', '')
     duration = ''
     if itunes_duration:
-        duration = itunes_duration
-    x = time.strptime(duration.split(',')[0],'%H:%M:%S')
-    return datetime.timedelta(hours=x.tm_hour,minutes=x.tm_min,seconds=x.tm_sec).total_seconds()
+        if ':' in itunes_duration:
+            timestr = '00:04:23'
+            ftr = [3600,60,1]
+            res = sum([a*b for a,b in zip(ftr, [int(i) for i in timestr.split(":")])])
+            return res
+        else: 
+            return int(itunes_duration)
+    else:
+        return 0
+
 
 
 def save_episode(episode, podcast):
     # handy - https://github.com/janw/podcast-archiver/blob/master/podcast_archiver.py
-    print('-----------')
-    print('attempting to save episode: ', episode['title'])
-    pprint.pprint(episode)
-    print('link:', extract_episode_link(episode))
-    print('audio: ', extract_audio_link(episode))
-    print('duration: ', extract_duration_in_seconds(episode))
-    print('-----------')
-
     try: 
-        e = Episode.objects.update_or_create(
+        e, created = Episode.objects.update_or_create(
             podcast = podcast,
             title = episode.get('title', False) or episode.get('ttl', None),
             content = episode.get('itunes_summary', False) or episode.get('summary', None),

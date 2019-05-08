@@ -34,7 +34,7 @@ class Podcast(models.Model):
     title = models.CharField(max_length=100, unique=True)
     slug = models.SlugField(unique=True)
     description = models.TextField()
-    last_synced_date = models.DateTimeField(default=now(), blank=True)
+    last_synced_date = models.DateTimeField(default=now, blank=True)
 
     def _get_unique_slug(self):
         slug = slugify(self.title)
@@ -63,7 +63,7 @@ class Episode(models.Model):
     published_date = models.DateTimeField()
     link = models.URLField()
     audio_url = models.URLField()
-    duration_seconds = models.DurationField()
+    duration_seconds = models.IntegerField()
 
     def _get_unique_slug(self):
         slug = slugify(self.title)

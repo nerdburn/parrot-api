@@ -1,4 +1,4 @@
-{ "titles": [ 
+titles = [ 
   { "title": "Myths and Legends" },
   { "title": "Happier with Dan Harris" },
   { "title": "Radiolab" },
@@ -91,7 +91,7 @@
   { "title": "Death, Sex & Money" },
   { "title": "True Murder" },
   { "title": "The Fighter & The Kid" },
-  { "title": "The Needle Drop" }, // unexpected close tag?
+  { "title": "The Needle Drop" },
   { "title": "Stacking the Bricks" },
   { "title": "Biz Chix" },
   { "title": "The Fizzle Show" },
@@ -136,4 +136,4 @@
   { "title": "Song Exploder" },
   { "title": "Men in Blazers" },
   { "title": "Football Ramble" }
-] }
+]

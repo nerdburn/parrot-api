@@ -1,7 +1,6 @@
 from django.contrib import admin
 from .models import Podcast, Episode, Category
 
-admin.site.register(Episode)
 
 @admin.register(Podcast)
 class PodcastAdmin(admin.ModelAdmin):
@@ -12,3 +11,8 @@ class PodcastAdmin(admin.ModelAdmin):
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ('name', 'slug')
     list_display_links = ('name',)
+
+@admin.register(Episode)
+class EpisodeAdmin(admin.ModelAdmin):
+    list_display = ('title', 'slug', 'podcast')
+    list_display_links = ('title',)
