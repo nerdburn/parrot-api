@@ -57,12 +57,12 @@ class Podcast(models.Model):
 class Episode(models.Model): 
     podcast = models.ForeignKey('Podcast', null=False, blank=False, on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
-    slug = models.SlugField(unique=True)
+    slug = models.SlugField(unique=True, max_length=255)
     content = models.TextField()
     content_snippet = models.TextField()
     published_date = models.DateTimeField()
-    link = models.URLField()
-    audio_url = models.URLField()
+    link = models.URLField(max_length=500)
+    audio_url = models.URLField(max_length=500)
     duration_seconds = models.IntegerField()
 
     def _get_unique_slug(self):

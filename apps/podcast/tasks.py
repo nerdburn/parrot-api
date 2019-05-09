@@ -5,17 +5,18 @@ import time
 import datetime
 import json
 
-from apps.podcast.fixtures import titles
+import apps.podcast.fixtures.titles as titles
 from dateutil.parser import parse
 from .models import Podcast, Category, Episode
 
 def fetch_top_100_podcasts():
     if titles:
         print(titles)
-        for title in titles:
+        for item in titles.titles:
             try:
-                print(title)
-                #find_and_save_podcast(title.title)
+                title = item.get('title', False)
+                if title:
+                    find_and_save_podcast(title)
             except Exception as e:
                 print('------------------------------------------')
                 print('Find and save podcast failed: ', e)
@@ -25,9 +26,7 @@ def fetch_top_100_podcasts():
 
 def fetch_itunes_podcast_by_title(query):
     if query:
-        print('------------------------------------------------------')
-        print('Fetching itunes podcast by title: ', query)
-        print('------------------------------------------------------')
+        print('Searching for itunes podcast by title: ', query)
     else:
         print('Missing title.')
         return False
@@ -172,6 +171,16 @@ def extract_duration_in_seconds(episode):
 
 def save_episode(episode, podcast):
     # handy - https://github.com/janw/podcast-archiver/blob/master/podcast_archiver.py
+    audio_link = extract_audio_link(episode)
+    if not audio_link:
+        print('Episode skipped, no audio link: ', episode.get('title', None))
+        return False
+    
+    episode_link = extract_episode_link(episode)
+    if not episode_link:
+        print('Episode skipped, no episode link: ', episode.get('title', None))
+        return False
+
     try: 
         e, created = Episode.objects.update_or_create(
             podcast = podcast,
@@ -179,10 +188,10 @@ def save_episode(episode, podcast):
             content = episode.get('itunes_summary', False) or episode.get('summary', None),
             content_snippet = episode.get('itunes_summary', False) or episode.get('summary', None),
             published_date = parse(episode.get('published', None)),
-            link = extract_episode_link(episode),
-            audio_url = extract_audio_link(episode),
+            link = episode_link,
+            audio_url = audio_link,
             duration_seconds = extract_duration_in_seconds(episode),
         )
         e.save()
     except Exception as e:
-        print('error saving episode: ', e)
+        print('Error saving episode: ', e)
